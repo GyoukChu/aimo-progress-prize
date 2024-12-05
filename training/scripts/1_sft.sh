@@ -1,0 +1,1 @@
+CUDA_VISIBLE_DEVICES=0,1,2,3 accelerate launch --config_file=training/configs/deepspeed_zero3.yaml training/sft.py training/configs/stage-1-cot.yaml

@@ -36,7 +36,8 @@ from transformers.trainer_utils import get_last_checkpoint
 
 from ..configs import DataConfig, ModelConfig, SFTConfig
 
-DEFAULT_CHAT_TEMPLATE = "{% if not add_generation_prompt is defined %}{% set add_generation_prompt = false %}{% endif %}{% for message in messages %}{{'<|im_start|>' + message['role'] + '\n' + message['content'] + '<|im_end|>' + '\n'}}{% endfor %}{% if add_generation_prompt %}{{ '<|im_start|>assistant\n' }}{% endif %}"
+# DEFAULT CHAT TEMPLATE = gemma-2-9b-it
+DEFAULT_CHAT_TEMPLATE = "{{ bos_token }}{% if messages[0]['role'] == 'system' %}{{ raise_exception('System role not supported') }}{% endif %}{% for message in messages %}{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}{% endif %}{% if (message['role'] == 'assistant') %}{% set role = 'model' %}{% else %}{% set role = message['role'] %}{% endif %}{{ '<start_of_turn>' + role + '\n' + message['content'] | trim + '<end_of_turn>\n' }}{% endfor %}{% if add_generation_prompt %}{{'<start_of_turn>model\n'}}{% endif %}"
 
 
 def apply_chat_template(
@@ -46,9 +47,10 @@ def apply_chat_template(
 ):
     if task in ["sft", "generation"]:
         messages = example["messages"]
-        # We add an empty system message if there is none
-        if messages[0]["role"] != "system":
-            messages.insert(0, {"role": "system", "content": ""})
+        # # We add an empty system message if there is none
+        # if messages[0]["role"] != "system":
+        #     messages.insert(0, {"role": "system", "content": ""})
+        # NOOO : gemma-2 no system prompt
         example["text"] = tokenizer.apply_chat_template(
             messages, tokenize=False, add_generation_prompt=True if task == "generation" else False
         )

@@ -1,56 +1,66 @@
 # Model arguments
 # For definitions, see: src/h4/training/config.py
-model_name_or_path: deepseek-ai/deepseek-math-7b-base
+model_name_or_path: ChuGyouk/ko-gemma-2-9b-it-tokenizer-fixed
 model_revision: main
 torch_dtype: bfloat16
-attn_implementation: flash_attention_2
+# attn_implementation: flash_attention_2
 overwrite_hub_revision: true
 # Data training arguments
 # For definitions, see: src/h4/training/config.py
-block_size: 2048
-chat_template: "{% for message in messages %}{% if (message['role'] == 'system')%}{{ '' }}{% elif (message['role'] == 'user')%}{{ '### Problem: ' + message['content'] + '\n' }}{% elif (message['role'] == 'assistant')%}{{ '### Solution: ' + message['content'] + '\n' }}{% endif %}{% if loop.last and message['role'] == 'user' and add_generation_prompt %}{{ '### Solution: ' }}{% endif %}{% endfor %}"
+block_size: 1024
+chat_template: "{{ bos_token }}{% if messages[0]['role'] == 'system' %}{{ raise_exception('System role not supported') }}{% endif %}{% for message in messages %}{% if (message['role'] == 'user') != (loop.index0 % 2 == 0) %}{{ raise_exception('Conversation roles must alternate user/assistant/user/assistant/...') }}{% endif %}{% if (message['role'] == 'assistant') %}{% set role = 'model' %}{% else %}{% set role = message['role'] %}{% endif %}{{ '<start_of_turn>' + role + '\n' + message['content'] | trim + '<end_of_turn>\n' }}{% endfor %}{% if add_generation_prompt %}{{'<start_of_turn>model\n'}}{% endif %}"
 dataset_mixer: 
-  AI-MO/NuminaMath-CoT: 1.0
+  ChuGyouk/aihub_plus_kipris: 1.0
 dataset_splits:
 - train
 - test
-preprocessing_num_workers: 12
+preprocessing_num_workers: 10
 
 # Training arguments with sensible defaults
 # Add other options from here: https://huggingface.co/docs/transformers/v4.26.1/en/main_classes/trainer#transformers.TrainingArguments
 bf16: true
-do_eval: true
 do_train: true
-eval_strategy: epoch # One of ["no", "steps", "epoch"]
-gradient_accumulation_steps: 1
+per_device_train_batch_size: 4
+gradient_accumulation_steps: 4
+
+do_eval: true
+eval_strategy: "steps" # One of ["no", "steps", "epoch"]
+eval_steps: 5000
+
+per_device_eval_batch_size: 8
+gradient_accumulation_steps: 4
 gradient_checkpointing: true
 gradient_checkpointing_kwargs:
   use_reentrant: False
-hub_model_id: numina-math-7b-cot
+
+hub_model_id: gyouk-aifellow-full
 hub_private_repo: true
 hub_strategy: every_save
-learning_rate: 2.0e-05
+
+learning_rate: 5.0e-06
 log_level: passive
 logging_steps: 5  
 logging_strategy: steps
-lr_scheduler_type: cosine
+lr_scheduler_type: constant_with_warmup
 max_steps: -1
-num_train_epochs: 3
-output_dir: data/numina-math-7b-cot
+num_train_epochs: 2
+output_dir: data/gyouk-aifellow-full
 hub_model_revision: main
-run_name: numina-math-7b-cot
+run_name: gyouk-aifellow-full
 overwrite_output_dir: true
-per_device_eval_batch_size: 8
-per_device_train_batch_size: 4
+
 push_to_hub: true
 remove_unused_columns: true
 report_to:
-- tensorboard
 - wandb
-save_strategy: "no"
+save_strategy: "steps"
+save_steps: 5000
+
 seed: 42
-wandb_run_group: numina-math-7b-cot # Name of the W&B group to collect all runs of this experiment under. Use double-digits for {idx}, starting from 00.
+
+wandb_run_group: gyouk-aifellow-full # Name of the W&B group to collect all runs of this experiment under. Use double-digits for {idx}, starting from 00.
 wandb_run_id: null # Set this to a globally unique string if you want a descriptive name of your run
 wandb_tags: # Use tags to filter runs on WandB
 - sft
-warmup_ratio: 0.
+warmup_ratio: 0.02
+weight_decay: 0.0

@@ -73,7 +73,7 @@ def main():
     # Log on each process a small summary
     logger.warning(
         f"Process rank: {sft_config.local_rank}, device: {sft_config.device}, n_gpu: {sft_config.n_gpu}"
-        + f" distributed training: {bool(sft_config.local_rank != -1)}, 16-bits training: {sft_config.fp16}"
+        + f" distributed training: {bool(sft_config.local_rank != -1)}, 16-bits training: {sft_config.fp16 or sft_config.bf16}"
     )
     logger.info(f"Model parameters {model_config}")
     logger.info(f"Data parameters {data_config}")
@@ -136,6 +136,18 @@ def main():
         for index in random.sample(range(len(raw_datasets["train"])), 3):
             logger.info(f"Sample {index} of the processed training set:\n\n{raw_datasets['train'][index]['text']}")
 
+    ######### NEW!!! #########
+    ##########################
+    # Train on Completion Only
+    ##########################
+    collator = None
+    if sft_config.packing:
+            raise ValueError("DataCollatorForCompletionOnlyLM only works when packing=False.")
+        if not data_config.response_template:
+            raise ValueError("You must give response_template (ex: ### Answer:) to train on completion only.")
+        response_template = data_config.response_template
+        collator = DataCollatorForCompletionOnlyLM(response_template, tokenizer=tokenizer)
+
     ########################
     # Initialize the Trainer
     ########################
@@ -148,6 +160,7 @@ def main():
         dataset_text_field="text",
         max_seq_length=data_config.block_size,
         tokenizer=tokenizer,
+        data_collator=collator,
         packing=sft_config.packing,
     )
 

@@ -27,6 +27,7 @@ class DataConfig:
         metadata={"help": "Whether to add special tokens from the dialogue template to the model's vocab"},
     )
     chat_template: Optional[str] = field(default=None, metadata={"help": "The chat template to use."})
+    response_template: Optional[str] = field(default=None, metadata={"help": "The response template within chat template (if given)."})
     dataset_mixer: Optional[Dict[str, Union[float, Dict[str, object]]]] = field(
         default=None,
         metadata={
